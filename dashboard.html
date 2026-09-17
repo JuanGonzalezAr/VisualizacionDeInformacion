@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Registro de la Plantación — 1820–1830</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#EDE4D2;
+    --panel:#F7F1E5;
+    --panel-edge:#D9CBA9;
+    --ink:#241C13;
+    --ink-soft:#6b5c45;
+    --line:#c9bb96;
+    --rust:#A3402A;
+    --teal:#2E5F58;
+    --gold:#A9781F;
+    --purple:#5B3A63;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(0,0,0,0.035) 0, transparent 45%),
+      radial-gradient(circle at 90% 80%, rgba(0,0,0,0.03) 0, transparent 40%);
+    color:var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height:1.5;
+  }
+  .masthead{
+    padding:36px 6vw 22px;
+    border-bottom:2px solid var(--ink);
+  }
+  .masthead .kicker{
+    font-size:12.5px;
+    letter-spacing:.04em;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .masthead h1{
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-weight:400;
+    font-size:clamp(28px,4vw,44px);
+    margin:0 0 8px;
+    letter-spacing:-0.01em;
+  }
+  .masthead p{
+    max-width:640px;
+    color:var(--ink-soft);
+    font-size:15px;
+    margin:0;
+  }
+  .shell{
+    display:flex;
+    gap:0;
+    min-height:70vh;
+  }
+  nav.index{
+    width:230px;
+    flex:none;
+    padding:28px 0 40px 6vw;
+    border-right:1px solid var(--line);
+  }
+  nav.index .label{
+    font-size:11px;
+    color:var(--ink-soft);
+    letter-spacing:.05em;
+    margin-bottom:14px;
+  }
+  nav.index button{
+    display:block;
+    width:calc(100% - 18px);
+    text-align:left;
+    background:none;
+    border:none;
+    border-left:3px solid transparent;
+    padding:11px 0 11px 15px;
+    margin-bottom:2px;
+    font-family:inherit;
+    font-size:14.5px;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  nav.index button .n{
+    font-family:Georgia, serif;
+    font-style:italic;
+    color:var(--panel-edge);
+    margin-right:8px;
+  }
+  nav.index button.active{
+    color:var(--ink);
+    border-left-color:var(--rust);
+    font-weight:600;
+  }
+  nav.index button:hover{ color:var(--ink); }
+
+  main{
+    flex:1;
+    padding:32px 6vw 60px 5vw;
+  }
+  section.page{ display:none; }
+  section.page.active{ display:block; animation:rise .35s ease; }
+  @keyframes rise{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+
+  h2.page-title{
+    font-family:Georgia, serif;
+    font-weight:400;
+    font-size:24px;
+    margin:0 0 4px;
+  }
+  .page-sub{
+    color:var(--ink-soft);
+    font-size:14px;
+    margin:0 0 26px;
+    max-width:600px;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:22px;
+  }
+  @media (max-width:880px){
+    .shell{flex-direction:column;}
+    nav.index{width:auto; border-right:none; border-bottom:1px solid var(--line); padding:20px 6vw;}
+    nav.index button{border-left:none; border-bottom:2px solid transparent; padding:8px 10px;}
+    nav.index button.active{border-bottom-color:var(--rust);}
+    .grid{grid-template-columns:1fr;}
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--panel-edge);
+    padding:20px 20px 12px;
+    position:relative;
+  }
+  .card::before{
+    content:"";
+    position:absolute; top:0; left:0; right:0; height:3px;
+    background:var(--rust);
+  }
+  .card h3{
+    font-size:14.5px;
+    font-weight:600;
+    margin:2px 0 2px;
+  }
+  .card .note{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin:0 0 12px;
+  }
+  .card canvas{ max-height:260px; }
+  .stat-row{
+    display:flex;
+    gap:14px;
+    margin-top:14px;
+    flex-wrap:wrap;
+  }
+  .stat{
+    border-left:2px solid var(--line);
+    padding-left:10px;
+  }
+  .stat b{ display:block; font-size:19px; font-family:Georgia,serif; }
+  .stat span{ font-size:11.5px; color:var(--ink-soft); }
+  .full{ grid-column:1 / -1; }
+
+  /* geography tab */
+  .map-toggle{
+    display:inline-flex;
+    border:1px solid var(--ink);
+    margin-bottom:18px;
+  }
+  .map-toggle button{
+    font-family:inherit;
+    background:var(--panel);
+    border:none;
+    padding:8px 16px;
+    font-size:13px;
+    cursor:pointer;
+    color:var(--ink-soft);
+    border-right:1px solid var(--ink);
+  }
+  .map-toggle button:last-child{ border-right:none; }
+  .map-toggle button.active{ background:var(--ink); color:var(--panel); }
+
+  .schematic{
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--panel-edge);
+    height:400px;
+    overflow:hidden;
+  }
+  .schematic::before{
+    content:"";
+    position:absolute; top:0; left:0; right:0; height:3px;
+    background:var(--teal);
+  }
+  .state{
+    position:absolute;
+    width:100px; height:64px;
+    display:flex; align-items:center; justify-content:center;
+    text-align:center;
+    font-size:11.5px;
+    color:#fff;
+    border:1px solid rgba(0,0,0,0.25);
+    cursor:default;
+    padding:4px;
+  }
+  .pin{
+    position:absolute;
+    width:14px; height:14px;
+    border-radius:50% 50% 50% 0;
+    background:var(--rust);
+    transform:rotate(-45deg);
+    border:2px solid var(--panel);
+  }
+  .pin-label{
+    position:absolute;
+    font-size:11px;
+    color:var(--ink);
+    background:var(--panel);
+    padding:2px 6px;
+    border:1px solid var(--panel-edge);
+    white-space:nowrap;
+  }
+  .route-line{
+    position:absolute;
+    border-top:2px dashed var(--rust);
+    transform-origin:0 0;
+  }
+  .legend-strip{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin:14px 0 20px;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .legend-grad{
+    width:160px; height:10px;
+    background:linear-gradient(90deg,#E8C158,#C97A3B,#A3402A,#5B3A63);
+    border:1px solid var(--ink);
+  }
+  footer{
+    padding:20px 6vw 40px;
+    border-top:1px solid var(--line);
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+
+  /* gate */
+  .gate{
+    position:fixed; inset:0; z-index:50;
+    background:var(--bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center;
+    padding:20px;
+    transition:opacity .7s ease;
+  }
+  .gate.unlocked{ opacity:0; pointer-events:none; }
+  .gate .kicker{
+    font-size:12.5px; letter-spacing:.04em; color:var(--ink-soft); margin-bottom:10px;
+  }
+  .gate h1{
+    font-family:Georgia, serif; font-weight:400;
+    font-size:clamp(24px,3.4vw,34px);
+    margin:0 0 8px;
+  }
+  .gate p.instr{
+    color:var(--ink-soft); font-size:14px; max-width:420px; margin:0 0 26px;
+  }
+  .gate .counter{
+    font-family:Georgia, serif; font-size:13px; color:var(--rust); margin-top:18px; letter-spacing:.03em;
+  }
+  .plantwrap{ position:relative; cursor:crosshair; }
+  .plantwrap svg{ display:block; }
+  .boll{ cursor:pointer; transition:transform .15s ease, opacity .35s ease; transform-box:fill-box; transform-origin:center; }
+  .boll:hover circle.puff{ filter:brightness(1.08); }
+  .boll.popped{ opacity:0; transform:scale(0.2); pointer-events:none; }
+  .shot-flash{
+    position:absolute; width:5px; height:5px; border-radius:50%;
+    background:var(--rust); opacity:0; pointer-events:none;
+  }
+  .shot-flash.fire{
+    animation:flash .28s ease-out forwards;
+  }
+  @keyframes flash{
+    0%{ opacity:1; transform:scale(0.5); }
+    100%{ opacity:0; transform:scale(3.2); }
+  }
+  .gate-msg{
+    font-family:Georgia, serif; font-style:italic; color:var(--teal); font-size:15px; margin-top:16px; opacity:0; transition:opacity .4s ease;
+  }
+  .gate-msg.show{ opacity:1; }
+
+  #app{ opacity:0; transition:opacity .8s ease .2s; }
+  #app.visible{ opacity:1; }
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="kicker">ANTES DE ABRIR EL LEGAJO</div>
+  <h1>Dispara a los capullos para desbloquear el registro</h1>
+  <p class="instr">Cada capullo recolectado abre una parte del archivo. Haz clic sobre los seis capullos de la planta.</p>
+  <div class="plantwrap" id="plantwrap">
+    <svg width="260" height="300" viewBox="0 0 260 300">
+      <path d="M130 300 C130 220 130 160 130 120" stroke="#5B3A63" stroke-width="5" fill="none"/>
+      <path d="M130 190 C 90 175 70 150 60 120" stroke="#3F6B4A" stroke-width="4" fill="none"/>
+      <path d="M130 150 C 175 138 195 115 205 90" stroke="#3F6B4A" stroke-width="4" fill="none"/>
+      <path d="M130 220 C 85 210 60 195 45 175" stroke="#3F6B4A" stroke-width="4" fill="none"/>
+      <path d="M130 240 C 178 232 205 215 220 195" stroke="#3F6B4A" stroke-width="4" fill="none"/>
+      <ellipse cx="95" cy="118" rx="20" ry="14" fill="#4A7A40"/>
+      <ellipse cx="175" cy="98" rx="20" ry="14" fill="#4A7A40"/>
+      <ellipse cx="70" cy="178" rx="18" ry="13" fill="#4A7A40"/>
+      <ellipse cx="195" cy="200" rx="18" ry="13" fill="#4A7A40"/>
+
+      <g class="boll" data-id="1"><circle class="puff" cx="60" cy="118" r="16" fill="#F7F1E5" stroke="#D9CBA9" stroke-width="2"/><circle cx="52" cy="112" r="7" fill="#fff"/><circle cx="68" cy="112" r="7" fill="#fff"/><circle cx="60" cy="126" r="7" fill="#fff"/></g>
+      <g class="boll" data-id="2"><circle class="puff" cx="205" cy="88" r="16" fill="#F7F1E5" stroke="#D9CBA9" stroke-width="2"/><circle cx="197" cy="82" r="7" fill="#fff"/><circle cx="213" cy="82" r="7" fill="#fff"/><circle cx="205" cy="96" r="7" fill="#fff"/></g>
+      <g class="boll" data-id="3"><circle class="puff" cx="45" cy="173" r="16" fill="#F7F1E5" stroke="#D9CBA9" stroke-width="2"/><circle cx="37" cy="167" r="7" fill="#fff"/><circle cx="53" cy="167" r="7" fill="#fff"/><circle cx="45" cy="181" r="7" fill="#fff"/></g>
+      <g class="boll" data-id="4"><circle class="puff" cx="220" cy="193" r="16" fill="#F7F1E5" stroke="#D9CBA9" stroke-width="2"/><circle cx="212" cy="187" r="7" fill="#fff"/><circle cx="228" cy="187" r="7" fill="#fff"/><circle cx="220" cy="201" r="7" fill="#fff"/></g>
+      <g class="boll" data-id="5"><circle class="puff" cx="130" cy="115" r="17" fill="#F7F1E5" stroke="#D9CBA9" stroke-width="2"/><circle cx="121" cy="109" r="7" fill="#fff"/><circle cx="139" cy="109" r="7" fill="#fff"/><circle cx="130" cy="124" r="7" fill="#fff"/></g>
+      <g class="boll" data-id="6"><circle class="puff" cx="130" cy="245" r="17" fill="#F7F1E5" stroke="#D9CBA9" stroke-width="2"/><circle cx="121" cy="239" r="7" fill="#fff"/><circle cx="139" cy="239" r="7" fill="#fff"/><circle cx="130" cy="254" r="7" fill="#fff"/></g>
+    </svg>
+  </div>
+  <div class="counter" id="gateCounter">0 / 6 capullos recolectados</div>
+  <div class="gate-msg" id="gateMsg">Legajo desbloqueado — abriendo registro…</div>
+</div>
+
+<div id="app">
+<div class="masthead">
+  <div class="kicker">LEGAJO DE TRABAJO — TALLER · DATOS COMPARATIVOS</div>
+  <h1>Registro de la plantación</h1>
+  <p>Panel interactivo de las cifras económicas y operativas del proyecto: producción, mercado, comercio, riesgo y geografía, 1820–1830.</p>
+</div>
+
+<div class="shell">
+  <nav class="index">
+    <div class="label">ÍNDICE</div>
+    <button class="tab-btn active" data-tab="trabajo"><span class="n">I.</span>Trabajo forzado</button>
+    <button class="tab-btn" data-tab="partes"><span class="n">II.</span>Partes del total</button>
+    <button class="tab-btn" data-tab="tendencias"><span class="n">III.</span>Tendencias</button>
+    <button class="tab-btn" data-tab="geografia"><span class="n">IV.</span>Geografía</button>
+  </nav>
+
+  <main>
+
+    <!-- I. TRABAJO -->
+    <section class="page active" id="trabajo">
+      <h2 class="page-title">Trabajo forzado</h2>
+      <p class="page-sub">Exigencia diaria de recolección y reparto semanal de tareas dentro de la plantación.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>Cuotas de cosecha diaria</h3>
+          <p class="note">Libras de algodón pizcado por persona, por día</p>
+          <canvas id="chartCuotas"></canvas>
+          <div class="stat-row">
+            <div class="stat"><b>100 lb</b><span>límite de castigo</span></div>
+            <div class="stat"><b>135 lb</b><span>promedio real</span></div>
+            <div class="stat"><b>180 lb</b><span>máxima explotación</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Horas semanales por tipo de trabajo</h3>
+          <p class="note">Distribución de horas asignadas por labor</p>
+          <canvas id="chartHoras"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- II. PARTES DEL TOTAL -->
+    <section class="page" id="partes">
+      <h2 class="page-title">Partes del total</h2>
+      <p class="page-sub">Quién controla el mercado de tierra y qué se produce para exportar.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>Distribución del mercado de terratenientes</h3>
+          <p class="note">Porcentaje de participación por sector</p>
+          <canvas id="chartMercado"></canvas>
+        </div>
+        <div class="card">
+          <h3>Composición de exportaciones por producto</h3>
+          <p class="note">Distribución porcentual por categoría</p>
+          <canvas id="chartExport"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- III. TENDENCIAS -->
+    <section class="page" id="tendencias">
+      <h2 class="page-title">Tendencias</h2>
+      <p class="page-sub">Riesgo a lo largo del trayecto fluvial y evolución del precio del algodón en la década.</p>
+      <div class="grid">
+        <div class="card full">
+          <h3>Riesgo en el trayecto de transporte fluvial</h3>
+          <p class="note">Nivel de riesgo (1–10) en cada etapa, desde la plantación hasta el puerto</p>
+          <canvas id="chartRiesgo"></canvas>
+        </div>
+        <div class="card full">
+          <h3>Precio del algodón, 1820–1830</h3>
+          <p class="note">Centavos por libra — lectura aproximada del gráfico original, ajusta los valores si tienes las cifras exactas</p>
+          <canvas id="chartPrecio"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- IV. GEOGRAFÍA -->
+    <section class="page" id="geografia">
+      <h2 class="page-title">Geografía</h2>
+      <p class="page-sub">Producción por estado y ruta de escape. Esquema simplificado, no a escala cartográfica real.</p>
+      <div class="map-toggle">
+        <button class="geo-btn active" data-geo="produccion">Producción de algodón</button>
+        <button class="geo-btn" data-geo="ruta">Ruta de escape de August</button>
+      </div>
+
+      <div id="geo-produccion">
+        <div class="legend-strip">Menor producción <div class="legend-grad"></div> Mayor producción (45–150)</div>
+        <div class="schematic" id="mapProduccion"></div>
+      </div>
+
+      <div id="geo-ruta" style="display:none;">
+        <div class="schematic" id="mapRuta"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>Cifras y estimaciones reconstruidas a partir del material de referencia del proyecto — panel de uso interno para presentación.</footer>
+</div>
+
+<script>
+// Gate: dispara a los 6 capullos para desbloquear el panel
+(function(){
+  const bolls = document.querySelectorAll('.boll');
+  const counterEl = document.getElementById('gateCounter');
+  const gate = document.getElementById('gate');
+  const gateMsg = document.getElementById('gateMsg');
+  const app = document.getElementById('app');
+  let popped = 0;
+
+  bolls.forEach(boll=>{
+    boll.addEventListener('click', (e)=>{
+      if(boll.classList.contains('popped')) return;
+      boll.classList.add('popped');
+      popped++;
+      counterEl.textContent = popped + ' / 6 capullos recolectados';
+
+      if(popped === bolls.length){
+        gateMsg.classList.add('show');
+        setTimeout(()=>{
+          gate.classList.add('unlocked');
+          app.classList.add('visible');
+        }, 900);
+      }
+    });
+  });
+})();
+</script>
+
+<script>
+Chart.defaults.font.family = "ui-sans-serif, system-ui, sans-serif";
+Chart.defaults.color = "#6b5c45";
+Chart.defaults.font.size = 12;
+
+const inkGrid = "#c9bb96";
+
+// I. Cuotas
+new Chart(document.getElementById('chartCuotas'), {
+  type: 'bar',
+  data: {
+    labels: ['Cuota mínima\n(límite de castigo)', 'Promedio real\ncosechado', 'Cuota sobresaliente\n(máxima explotación)'],
+    datasets: [{
+      data: [100, 135, 180],
+      backgroundColor: ['#C97A3B', '#A3402A', '#5B3A63'],
+      borderRadius: 2
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    plugins: { legend: { display:false } },
+    scales: {
+      x: { grid:{color:inkGrid}, title:{display:true, text:'Libras por día'} },
+      y: { grid:{display:false} }
+    }
+  }
+});
+
+// I. Horas
+new Chart(document.getElementById('chartHoras'), {
+  type: 'bar',
+  data: {
+    labels: ['Recolección de\nAlgodón', 'Herrería y\nMant. Pesado', 'Construcción de\nInfraestructura', 'Tareas\nLogísticas'],
+    datasets: [{
+      data: [48, 24, 16, 12],
+      backgroundColor: '#2E5F58',
+      borderRadius: 2
+    }]
+  },
+  options: {
+    plugins: { legend: { display:false } },
+    scales: {
+      y: { grid:{color:inkGrid}, title:{display:true, text:'Horas semanales'} },
+      x: { grid:{display:false} }
+    }
+  }
+});
+
+// II. Mercado (donut)
+new Chart(document.getElementById('chartMercado'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Monopolio grandes terratenientes', 'Comerciantes independientes locales', 'Red clandestina / comercio informal'],
+    datasets: [{
+      data: [70, 20, 10],
+      backgroundColor: ['#5B3A63', '#2E5F58', '#C97A3B']
+    }]
+  },
+  options: { plugins: { legend: { position:'bottom', labels:{boxWidth:12} } } }
+});
+
+// II. Exportaciones (pie)
+new Chart(document.getElementById('chartExport'), {
+  type: 'pie',
+  data: {
+    labels: ['Algodón crudo', 'Tabaco y madera', 'Productos agrícolas y alimentos', 'Bienes manufacturados e industriales'],
+    datasets: [{
+      data: [42, 28, 18, 12],
+      backgroundColor: ['#A3402A', '#4A7A73', '#8A6BA0', '#C9506E']
+    }]
+  },
+  options: { plugins: { legend: { position:'bottom', labels:{boxWidth:12} } } }
+});
+
+// III. Riesgo
+new Chart(document.getElementById('chartRiesgo'), {
+  type: 'line',
+  data: {
+    labels: ['Hora 0\nSalida de plantación', 'Hora 3\nCaminos rurales', 'Hora 6\nPuesto de control', 'Hora 9\nRuta fluvial', 'Hora 12\nLlegada al puerto'],
+    datasets: [{
+      label: 'Nivel de riesgo (1–10)',
+      data: [9, 4, 8, 5, 3],
+      borderColor: '#A3402A',
+      backgroundColor: '#A3402A',
+      tension: 0.4,
+      pointRadius: 5
+    }]
+  },
+  options: {
+    plugins: { legend: { display:false } },
+    scales: {
+      y: { min:0, max:10, grid:{color:inkGrid} },
+      x: { grid:{display:false} }
+    }
+  }
+});
+
+// III. Precio
+new Chart(document.getElementById('chartPrecio'), {
+  type: 'line',
+  data: {
+    labels: ['1820','1821','1822','1823','1824','1825','1826','1827','1828','1829','1830'],
+    datasets: [{
+      label: 'Precio por libra (centavos)',
+      data: [17, 14.5, 13.5, 13.8, 14.2, 12, 10.2, 10, 9.6, 9.3, 9],
+      borderColor: '#C97A3B',
+      backgroundColor: 'rgba(201,122,59,0.15)',
+      fill: true,
+      tension: 0.35,
+      pointRadius: 3
+    }]
+  },
+  options: {
+    plugins: { legend: { display:false } },
+    scales: {
+      y: { grid:{color:inkGrid}, title:{display:true, text:'Centavos / libra'} },
+      x: { grid:{display:false} }
+    }
+  }
+});
+
+// IV. Tabs
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// IV. Geo toggle
+document.querySelectorAll('.geo-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.geo-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const isProd = btn.dataset.geo === 'produccion';
+    document.getElementById('geo-produccion').style.display = isProd ? 'block' : 'none';
+    document.getElementById('geo-ruta').style.display = isProd ? 'none' : 'block';
+  });
+});
+
+// Schematic state layout (approximate relative positions, not real cartography)
+const states = [
+  { name:'Carolina del Norte', top:40,  left:430, color:'#E8C158' },
+  { name:'Carolina del Sur',   top:150, left:400, color:'#C97A3B' },
+  { name:'Georgia',            top:230, left:340, color:'#A3402A' },
+  { name:'Alabama',            top:230, left:210, color:'#5B3A63' },
+  { name:'Luisiana',           top:230, left:40,  color:'#C97A3B' }
+];
+const mapProd = document.getElementById('mapProduccion');
+states.forEach(s=>{
+  const el = document.createElement('div');
+  el.className = 'state';
+  el.style.top = s.top+'px';
+  el.style.left = s.left+'px';
+  el.style.background = s.color;
+  el.textContent = s.name;
+  el.title = s.name;
+  mapProd.appendChild(el);
+});
+
+// Route schematic: plantation -> checkpoint -> river -> port
+const mapRuta = document.getElementById('mapRuta');
+const routePoints = [
+  { name:'Salida de la plantación', top:260, left:60 },
+  { name:'Puesto de control', top:150, left:230 },
+  { name:'Puerto fluvial', top:80, left:520 }
+];
+routePoints.forEach((p,i)=>{
+  const pin = document.createElement('div');
+  pin.className = 'pin';
+  pin.style.top = p.top+'px';
+  pin.style.left = p.left+'px';
+  mapRuta.appendChild(pin);
+  const label = document.createElement('div');
+  label.className = 'pin-label';
+  label.textContent = p.name;
+  label.style.top = (p.top-24)+'px';
+  label.style.left = (p.left-10)+'px';
+  mapRuta.appendChild(label);
+  if(i>0){
+    const prev = routePoints[i-1];
+    const dx = (p.left+7) - (prev.left+7);
+    const dy = (p.top+7) - (prev.top+7);
+    const len = Math.sqrt(dx*dx+dy*dy);
+    const angle = Math.atan2(dy,dx) * 180/Math.PI;
+    const line = document.createElement('div');
+    line.className = 'route-line';
+    line.style.width = len+'px';
+    line.style.top = (prev.top+7)+'px';
+    line.style.left = (prev.left+7)+'px';
+    line.style.transform = 'rotate('+angle+'deg)';
+    mapRuta.appendChild(line);
+  }
+});
+</script>
+
+</body>
+</html>

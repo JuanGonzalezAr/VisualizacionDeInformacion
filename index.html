@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Registro de la Plantación — 1820–1830</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
@@ -97,6 +98,7 @@
 
   main{
     flex:1;
+    min-width:0;
     padding:32px 6vw 60px 5vw;
   }
   section.page{ display:none; }
@@ -163,13 +165,20 @@
   .stat span{ font-size:11.5px; color:var(--ink-soft); }
   .full{ grid-column:1 / -1; }
 
-  /* geography tab */
-  .map-toggle{
-    display:inline-flex;
-    border:1px solid var(--ink);
+  /* ================= geography tab ================= */
+  .geo-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:12px;
     margin-bottom:18px;
   }
-  .map-toggle button{
+  .map-toggle, .zoom-toggle{
+    display:inline-flex;
+    border:1px solid var(--ink);
+  }
+  .map-toggle button, .zoom-toggle button{
     font-family:inherit;
     background:var(--panel);
     border:none;
@@ -179,46 +188,16 @@
     color:var(--ink-soft);
     border-right:1px solid var(--ink);
   }
-  .map-toggle button:last-child{ border-right:none; }
-  .map-toggle button.active{ background:var(--ink); color:var(--panel); }
+  .zoom-toggle button{ padding:8px 12px; font-size:12.5px; }
+  .map-toggle button:last-child, .zoom-toggle button:last-child{ border-right:none; }
+  .map-toggle button.active, .zoom-toggle button.active{ background:var(--ink); color:var(--panel); }
+  .map-toggle button:focus-visible, .zoom-toggle button:focus-visible{ outline:2px solid var(--rust); outline-offset:-4px; }
 
-  .mapcard{
-    position:relative;
-    background:var(--panel);
-    border:1px solid var(--panel-edge);
-    overflow:hidden;
-    padding:10px;
-  }
-  .mapcard::before{
-    content:"";
-    position:absolute; top:0; left:0; right:0; height:3px;
-    background:var(--teal);
-  }
-  #usaMap{ width:100%; height:auto; display:block; }
-  .usa-state{
-    fill:#DED2B4;
-    stroke:#B8A87F;
-    stroke-width:1;
-  }
-  .usa-state.highlight{ stroke:#241C13; stroke-width:1.1; cursor:default; }
-  .usa-state.dimmed{ fill:#e4dac2; opacity:.55; }
-  .route-pin{ fill:var(--rust); stroke:var(--panel); stroke-width:2.5; }
-  .route-path{
-    fill:none;
-    stroke:var(--rust);
-    stroke-width:2.2;
-    stroke-dasharray:6 5;
-  }
-  .route-label{
-    font-size:13px;
-    fill:var(--ink);
-  }
-  .route-label-bg{ fill:var(--panel); stroke:var(--panel-edge); }
   .legend-strip{
     display:flex;
     align-items:center;
     gap:10px;
-    margin:14px 0 20px;
+    margin:0 0 16px;
     font-size:12px;
     color:var(--ink-soft);
   }
@@ -227,6 +206,235 @@
     background:linear-gradient(90deg,#E8C158,#C97A3B,#A3402A,#5B3A63);
     border:1px solid var(--ink);
   }
+
+  .geo-layout{
+    display:grid;
+    grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr);
+    gap:22px;
+    align-items:start;
+  }
+  @media (max-width:1100px){
+    .geo-layout{ grid-template-columns:1fr; }
+  }
+
+  .mapcard{
+    position:sticky;
+    top:16px;
+    background:var(--panel);
+    border:1px solid var(--panel-edge);
+    overflow:hidden;
+    padding:10px;
+  }
+  @media (max-width:1100px){ .mapcard{ position:relative; top:auto; } }
+  .mapcard::before{
+    content:"";
+    position:absolute; top:0; left:0; right:0; height:3px;
+    background:var(--teal);
+    z-index:2;
+  }
+  #usaMap{ width:100%; height:auto; display:block; }
+
+  .usa-state{
+    fill:#DED2B4;
+    stroke:#B8A87F;
+    stroke-width:1;
+    vector-effect:non-scaling-stroke;
+    transition:fill .25s ease, opacity .25s ease;
+  }
+  .usa-state.clickable{ cursor:pointer; }
+  .usa-state.clickable:hover{ stroke:var(--ink); stroke-width:1.6; }
+  .usa-state.highlight{ stroke:#241C13; stroke-width:1.1; }
+  .usa-state.dimmed{ fill:#e4dac2; opacity:.55; }
+  .usa-state.route-on{ fill:#E6CDB4; }
+  .usa-state.route-active{ fill:#D69C7C; }
+  .usa-state.selected,
+  .usa-state.clickable.selected:hover{ stroke:var(--ink); stroke-width:3; }
+  .usa-state:focus{ outline:none; }
+  .usa-state:focus-visible{ stroke:var(--rust); stroke-width:3; }
+
+  /* etiquetas dentro del mapa (tamaño constante en pantalla) */
+  .st-lab{ pointer-events:none; }
+  .st-abbr{ font:700 10.5px ui-sans-serif,system-ui,sans-serif; letter-spacing:.07em; text-anchor:middle; }
+  .st-val{ font:400 16px Georgia,serif; text-anchor:middle; }
+
+  /* ruta */
+  .route-path{
+    fill:none;
+    stroke:var(--rust);
+    stroke-width:2.2px;
+    stroke-dasharray:7 6;
+    vector-effect:non-scaling-stroke;
+    pointer-events:none;
+  }
+  .route-path.done{ stroke-dasharray:none; }
+  .route-path.active{ stroke-dasharray:none; stroke-width:4.5px; }
+  .route-hit{
+    fill:none;
+    stroke:transparent;
+    stroke-width:24px;
+    vector-effect:non-scaling-stroke;
+    pointer-events:stroke;
+    cursor:pointer;
+  }
+  .node{ cursor:pointer; }
+  .node:focus{ outline:none; }
+  .node:focus-visible .dot{ stroke:var(--ink); stroke-width:3; }
+  .node .dot{ fill:var(--rust); stroke:var(--panel); stroke-width:2.5; }
+  .node .num{ fill:#fff; font:700 12px ui-sans-serif,system-ui,sans-serif; text-anchor:middle; pointer-events:none; }
+  .node.leg .dot{ fill:var(--panel); stroke:var(--rust); stroke-width:2; }
+  .node.leg .num{ fill:var(--rust); font-size:11px; }
+  .node.leg.done .dot{ fill:#EBC9BC; }
+  .node.active .dot,
+  .node.leg.active .dot{ fill:var(--ink); stroke:var(--panel); stroke-width:2.5; }
+  .node.active .num,
+  .node.leg.active .num{ fill:var(--panel); }
+  .node .halo{
+    fill:var(--rust);
+    pointer-events:none;
+    transform-box:fill-box;
+    transform-origin:center;
+    animation:halo 1.7s ease-out infinite;
+  }
+  @keyframes halo{ from{ transform:scale(1); opacity:.5; } to{ transform:scale(2.4); opacity:0; } }
+  .lab{ pointer-events:none; }
+  .lab-bg{ fill:var(--panel); stroke:var(--panel-edge); stroke-width:1; }
+  .lab-1{ font:600 9.5px ui-sans-serif,system-ui,sans-serif; letter-spacing:.07em; fill:var(--ink-soft); }
+  .lab-2{ font:600 12.5px ui-sans-serif,system-ui,sans-serif; fill:var(--ink); }
+
+  .map-tip{
+    position:absolute; z-index:6;
+    pointer-events:none;
+    background:var(--ink);
+    color:var(--panel);
+    font-size:12px;
+    line-height:1.4;
+    padding:7px 10px;
+    white-space:nowrap;
+    opacity:0;
+    transition:opacity .12s ease;
+  }
+  .map-tip.on{ opacity:1; }
+  .map-tip b{ display:block; font:400 14px Georgia,serif; }
+  .map-hint{
+    position:absolute; left:16px; bottom:14px; z-index:3;
+    font-size:11.5px;
+    color:var(--ink-soft);
+    background:rgba(247,241,229,.92);
+    border:1px solid var(--panel-edge);
+    padding:3px 9px;
+    pointer-events:none;
+  }
+
+  /* panel de detalle */
+  .geo-panel{
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--panel-edge);
+    padding:24px 20px 20px;
+    min-height:320px;
+  }
+  .geo-panel::before{
+    content:"";
+    position:absolute; top:0; left:0; right:0; height:3px;
+    background:var(--rust);
+  }
+  .gp-kicker{ font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); }
+  .gp-title{ font-family:Georgia,serif; font-weight:400; font-size:25px; line-height:1.2; margin:5px 0 2px; }
+  .gp-abbr{
+    font:600 11px ui-sans-serif,system-ui,sans-serif;
+    letter-spacing:.06em;
+    color:var(--ink-soft);
+    border:1px solid var(--line);
+    padding:1px 6px;
+    margin-left:10px;
+    vertical-align:middle;
+  }
+  .gp-sub{ color:var(--ink-soft); font-size:13.5px; margin:0 0 4px; }
+  .gp-lead{ font-size:13.5px; color:var(--ink-soft); margin:8px 0 4px; }
+  .gp-big{ display:flex; align-items:baseline; gap:10px; margin:12px 0 10px; flex-wrap:wrap; }
+  .gp-big b{ font:400 46px/1 Georgia,serif; }
+  .gp-big span{ font-size:12px; color:var(--ink-soft); }
+  .prod-meter{ position:relative; height:10px; background:#E6DCC3; border:1px solid var(--line); margin:6px 0 6px; }
+  .prod-meter i{ display:block; height:100%; }
+  .prod-meter em{ position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--ink); }
+  .meter-note{ display:flex; justify-content:space-between; font-size:11px; color:var(--ink-soft); }
+  .gp-stats{ display:grid; grid-template-columns:1fr 1fr; gap:14px 16px; margin:18px 0 4px; }
+  .gp-stats div{ border-left:2px solid var(--line); padding-left:10px; min-width:0; }
+  .gp-stats dt{ font-size:11.5px; color:var(--ink-soft); }
+  .gp-stats dd{ margin:0; font:400 19px/1.25 Georgia,serif; }
+  .gp-stats small{ display:block; font-size:11px; color:var(--ink-soft); }
+  .gp-note{
+    font-size:13.5px;
+    margin:16px 0 0;
+    padding:10px 12px;
+    background:rgba(163,64,42,.07);
+    border-left:3px solid var(--rust);
+  }
+  .gp-h{
+    font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft);
+    margin:20px 0 8px; padding-top:14px; border-top:1px solid var(--line);
+  }
+  .gp-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap; }
+  .gp-link{
+    background:none; border:none; padding:0; font:inherit; font-size:12.5px;
+    color:var(--rust); cursor:pointer; text-decoration:underline; text-underline-offset:3px;
+  }
+  .gp-btn{
+    font-family:inherit; font-size:12.5px;
+    background:var(--panel); border:1px solid var(--ink); color:var(--ink);
+    padding:7px 12px; cursor:pointer;
+  }
+  .gp-btn:hover:not(:disabled){ background:var(--ink); color:var(--panel); }
+  .gp-btn:disabled{ opacity:.35; cursor:default; }
+  .gp-btn.primary{ background:var(--ink); color:var(--panel); }
+  .gp-btn.primary:hover:not(:disabled){ background:var(--rust); border-color:var(--rust); }
+  .gp-actions{ display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
+  .gp-link:focus-visible, .gp-btn:focus-visible, .rank-row:focus-visible, .stage-row:focus-visible{ outline:2px solid var(--rust); outline-offset:2px; }
+
+  .rank-list, .stage-list{ display:flex; flex-direction:column; gap:2px; }
+  .rank-row, .stage-row{
+    display:grid;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    background:none;
+    border:1px solid transparent;
+    padding:8px;
+    font-family:inherit;
+    font-size:13.5px;
+    color:var(--ink);
+    text-align:left;
+    cursor:pointer;
+  }
+  .rank-row{ grid-template-columns:18px minmax(0,1fr) 36px; }
+  .stage-row{ grid-template-columns:26px minmax(0,1fr) 28px; }
+  .rank-row:hover, .stage-row:hover{ background:rgba(36,28,19,.05); }
+  .rank-row.sel, .stage-row.sel{ border-color:var(--ink); background:rgba(255,255,255,.5); }
+  .rn{ font:italic 13px Georgia,serif; color:var(--ink-soft); }
+  .rbar, .sbar{ display:block; height:6px; background:#E6DCC3; margin-top:5px; }
+  .rbar i, .sbar i{ display:block; height:100%; }
+  .rv, .sval{ font:400 17px Georgia,serif; text-align:right; }
+  .sn{
+    width:24px; height:24px; border-radius:50%;
+    border:1.5px solid var(--rust); color:var(--rust);
+    font:700 12px ui-sans-serif,system-ui,sans-serif;
+    display:grid; place-items:center;
+  }
+  .stage-row.done .sn{ background:var(--rust); color:#fff; }
+  .stage-row.sel .sn{ background:var(--ink); border-color:var(--ink); color:var(--panel); }
+  .sname b{ display:block; font-weight:600; }
+  .sname small{ display:block; font-size:11.5px; color:var(--ink-soft); }
+
+  .risk-row{ display:flex; align-items:center; gap:14px; margin:14px 0 4px; flex-wrap:wrap; }
+  .risk-num{ font:400 46px/1 Georgia,serif; }
+  .risk-num small{ font-size:16px; color:var(--ink-soft); margin-left:2px; }
+  .risk-blocks{ display:grid; grid-template-columns:repeat(10,1fr); gap:3px; flex:1; min-width:140px; }
+  .risk-blocks span{ height:14px; background:#E6DCC3; }
+  .risk-blocks span.on{ background:var(--rc); }
+  .risk-tag{ font-size:12.5px; font-weight:600; color:var(--rc); }
+  .gp-delta{ font-size:12.5px; color:var(--ink-soft); margin:2px 0 0; }
+  .gp-text{ font-size:14px; margin:14px 0 0; }
+
   footer{
     padding:20px 6vw 40px;
     border-top:1px solid var(--line);
@@ -281,6 +489,12 @@
 
   #app{ opacity:0; transition:opacity .8s ease .2s; }
   #app.visible{ opacity:1; }
+
+  @media (prefers-reduced-motion:reduce){
+    .node .halo{ animation:none; }
+    section.page.active{ animation:none; }
+    .usa-state{ transition:none; }
+  }
 </style>
 </head>
 <body>
@@ -393,16 +607,28 @@
     <!-- IV. GEOGRAFÍA -->
     <section class="page" id="geografia">
       <h2 class="page-title">Geografía</h2>
-      <p class="page-sub">Producción por estado y ruta de escape. Esquema simplificado, no a escala cartográfica real.</p>
-      <div class="map-toggle">
-        <button class="geo-btn active" data-geo="produccion">Producción de algodón</button>
-        <button class="geo-btn" data-geo="ruta">Ruta de escape de August</button>
+      <p class="page-sub">Producción por estado y ruta de escape. Esquema simplificado, no a escala cartográfica real. Selecciona un estado o una etapa para consultar su detalle.</p>
+
+      <div class="geo-bar">
+        <div class="map-toggle" role="group" aria-label="Tipo de mapa">
+          <button class="geo-btn active" data-geo="produccion">Producción de algodón</button>
+          <button class="geo-btn" data-geo="ruta">Ruta de escape de August</button>
+        </div>
+        <div class="zoom-toggle" role="group" aria-label="Encuadre del mapa">
+          <button class="zoom-btn active" data-zoom="in">Acercar</button>
+          <button class="zoom-btn" data-zoom="out">Vista completa</button>
+        </div>
       </div>
 
       <div id="legendProd" class="legend-strip">Menor producción <div class="legend-grad"></div> Mayor producción (45–150)</div>
 
-      <div class="mapcard">
-        <svg id="usaMap" viewBox="0 0 959 593" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="geo-layout">
+        <div class="mapcard" id="mapCard">
+          <svg id="usaMap" viewBox="0 0 959 593" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Mapa de Estados Unidos"></svg>
+          <div class="map-tip" id="mapTip" role="presentation"></div>
+          <div class="map-hint" id="mapHint"></div>
+        </div>
+        <aside class="geo-panel" id="geoPanel" aria-live="polite"></aside>
       </div>
     </section>
 
@@ -517,7 +743,7 @@ new Chart(document.getElementById('chartExport'), {
   options: { plugins: { legend: { position:'bottom', labels:{boxWidth:12} } } }
 });
 
-// III. Riesgo
+// III. Riesgo  (mantener sincronizado con RISK_BY_STAGE / STAGES del mapa de ruta)
 new Chart(document.getElementById('chartRiesgo'), {
   type: 'line',
   data: {
@@ -573,113 +799,497 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.getElementById(btn.dataset.tab).classList.add('active');
   });
 });
+</script>
 
-// ---- Mapa real de EE. UU. (paths de los 50 estados) ----
-const STATE_PATHS = JSON.parse(document.getElementById('state-paths-data').textContent);
+<script>
+/* =====================================================================
+   MAPAS INTERACTIVOS — producción por estado y ruta de escape
+   Los datos editables están al principio (PRODUCTION, STATE_NOTES, STAGES).
+   ===================================================================== */
+(function(){
+'use strict';
+
+const NS = 'http://www.w3.org/2000/svg';
+const $ = id => document.getElementById(id);
+const svg = $('usaMap'), card = $('mapCard'), tip = $('mapTip');
+const panel = $('geoPanel'), legend = $('legendProd'), hint = $('mapHint');
+
+const STATE_PATHS = JSON.parse($('state-paths-data').textContent);
 const STATE_NAMES = {AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',FL:'Florida',GA:'Georgia',HI:'Hawái',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Luisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Míchigan',MN:'Minnesota',MS:'Misisipi',MO:'Misuri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'Nueva Jersey',NM:'Nuevo México',NY:'Nueva York',NC:'Carolina del Norte',ND:'Dakota del Norte',OH:'Ohio',OK:'Oklahoma',OR:'Oregón',PA:'Pensilvania',RI:'Rhode Island',SC:'Carolina del Sur',SD:'Dakota del Sur',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'Virginia Occidental',WI:'Wisconsin',WY:'Wyoming'};
 
-const usaSvg = document.getElementById('usaMap');
-Object.keys(STATE_PATHS).forEach(abbr=>{
-  const p = document.createElementNS('http://www.w3.org/2000/svg','path');
-  p.setAttribute('d', STATE_PATHS[abbr]);
-  p.setAttribute('class','usa-state');
-  p.dataset.state = abbr;
-  const title = document.createElementNS('http://www.w3.org/2000/svg','title');
-  title.textContent = STATE_NAMES[abbr] || abbr;
-  p.appendChild(title);
-  usaSvg.appendChild(p);
-});
+/* ---------- DATOS ---------- */
 
-// Producción de algodón en el sur profundo (valores ilustrativos, escala 45-150)
-const PRODUCTION = { NC: 55, SC: 95, GA: 115, AL: 150, LA: 105 };
-function prodColor(v){
-  const stops = [[45,'#E8C158'],[80,'#C97A3B'],[115,'#A3402A'],[150,'#5B3A63']];
-  for(let i=0;i<stops.length-1;i++){
-    const [v0,c0]=stops[i], [v1,c1]=stops[i+1];
-    if(v<=v1){
-      const t=(v-v0)/(v1-v0);
-      const hex=c=>[1,3,5].map(k=>parseInt(c.substr(k,2),16));
-      const [r0,g0,b0]=hex(c0), [r1,g1,b1]=hex(c1);
-      const mix=(a,b)=>Math.round(a+(b-a)*Math.max(0,Math.min(1,t)));
-      return `rgb(${mix(r0,r1)},${mix(g0,g1)},${mix(b0,b1)})`;
-    }
-  }
-  return stops[stops.length-1][1];
-}
+// Producción de algodón en el sur profundo (valores ilustrativos, escala 45–150)
+const PRODUCTION = { NC:55, SC:95, GA:115, AL:150, LA:105 };
+const PROD_MAX = 150;
 
-const routeLayer = document.createElementNS('http://www.w3.org/2000/svg','g');
-routeLayer.id = 'routeLayer';
-routeLayer.style.display = 'none';
-usaSvg.appendChild(routeLayer);
+// Notas opcionales que aparecen en el detalle de cada estado
+const STATE_NOTES = {
+  AL: 'Punto de partida de la ruta de escape y estado con mayor producción del registro.',
+  MS: 'Estado del puesto de control en la ruta de escape. El registro no incluye una cifra de producción para Misisipi.',
+  LA: 'Estado de destino de la ruta de escape: aquí se ubica el puerto fluvial.'
+};
 
-// Ruta de escape: plantación (Alabama) -> puesto de control (Misisipi) -> puerto fluvial (Luisiana)
-const ROUTE = [
-  { abbr:'AL', label:'Salida de la plantación' },
-  { abbr:'MS', label:'Puesto de control' },
-  { abbr:'LA', label:'Puerto fluvial' }
-];
 const CENTROIDS = {AL:[654.8,428.9], GA:[716.8,406.9], SC:[749.5,379.6], NC:[780.9,342.7], LA:[574.2,474.9], MS:[589.3,423.0]};
 
-function buildRoute(){
-  const pathD = 'M ' + ROUTE.map(r=>CENTROIDS[r.abbr].join(',')).join(' L ');
-  const line = document.createElementNS('http://www.w3.org/2000/svg','path');
-  line.setAttribute('d', pathD);
-  line.setAttribute('class','route-path');
-  routeLayer.appendChild(line);
+// Etapas de la ruta de escape (riesgo 1–10; coincide con la gráfica «Riesgo en el trayecto»)
+// at.stop = etapa en un estado · at.leg = tramo entre dos estados
+const STAGES = [
+  { hour:0,  name:'Salida de plantación', place:'Alabama',                  risk:9, at:{stop:'AL'},        text:'Punto de partida de la ruta, en Alabama, el estado con mayor producción del registro. Con 9 sobre 10 es el momento de mayor riesgo de todo el trayecto.' },
+  { hour:3,  name:'Caminos rurales',      place:'Tramo Alabama → Misisipi', risk:4, at:{leg:['AL','MS']},  text:'Tramo por caminos rurales entre Alabama y Misisipi. Al alejarse de la plantación el riesgo cae de 9 a 4.' },
+  { hour:6,  name:'Puesto de control',    place:'Misisipi',                 risk:8, at:{stop:'MS'},        text:'Paso por el puesto de control, en Misisipi. El riesgo vuelve a subir hasta 8 sobre 10: es el segundo punto más peligroso de la ruta.' },
+  { hour:9,  name:'Ruta fluvial',         place:'Tramo Misisipi → Luisiana',risk:5, at:{leg:['MS','LA']},  text:'Tramo por la ruta fluvial entre Misisipi y Luisiana. Superado el control, el riesgo baja a 5.' },
+  { hour:12, name:'Llegada al puerto',    place:'Luisiana',                 risk:3, at:{stop:'LA'},        text:'Llegada al puerto fluvial de Luisiana. Con 3 sobre 10 es el punto de menor riesgo de todo el trayecto.' }
+];
+// Posición de la etiqueta de cada etapa en el mapa: right | left | above
+const LABEL_SIDE = [ 'right', 'above', 'left', 'right', 'left' ];
 
-  ROUTE.forEach(r=>{
-    const [x,y] = CENTROIDS[r.abbr];
-    const pin = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    pin.setAttribute('cx',x); pin.setAttribute('cy',y); pin.setAttribute('r',7);
-    pin.setAttribute('class','route-pin');
-    routeLayer.appendChild(pin);
+/* ---------- Derivados ---------- */
+const STAGE_OF_STATE = {};
+STAGES.forEach((s,i)=>{ if(s.at.stop) STAGE_OF_STATE[s.at.stop] = i; });
+const ranking = Object.entries(PRODUCTION).sort((a,b)=>b[1]-a[1]);
+const total   = ranking.reduce((s,[,v])=>s+v,0);
+const mean    = total / ranking.length;
+const leader  = ranking[0], laggard = ranking[ranking.length-1];
 
-    const bg = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    const labelWidth = r.label.length * 6.2 + 12;
-    bg.setAttribute('x', x - labelWidth/2); bg.setAttribute('y', y-30);
-    bg.setAttribute('width', labelWidth); bg.setAttribute('height', 18);
-    bg.setAttribute('class','route-label-bg');
-    routeLayer.appendChild(bg);
+const RISK_COLORS = { high:'#A3402A', mid:'#A9781F', low:'#2E5F58' };
+function riskInfo(r){
+  if(r >= 7) return { label:'Riesgo alto',  color:RISK_COLORS.high };
+  if(r >= 4) return { label:'Riesgo medio', color:RISK_COLORS.mid };
+  return            { label:'Riesgo bajo',  color:RISK_COLORS.low };
+}
 
-    const label = document.createElementNS('http://www.w3.org/2000/svg','text');
-    label.setAttribute('x', x); label.setAttribute('y', y-17);
-    label.setAttribute('text-anchor','middle');
-    label.setAttribute('class','route-label');
-    label.textContent = r.label;
-    routeLayer.appendChild(label);
+const fmt = (n,d=1) => n.toLocaleString('es',{maximumFractionDigits:d});
+const signed = n => (n>0?'+':n<0?'−':'') + fmt(Math.abs(n));
+const listEs = arr => arr.length<2 ? arr.join('') : arr.slice(0,-1).join(', ') + ' y ' + arr[arr.length-1];
+
+/* ---------- Color de producción ---------- */
+const STOPS = [[45,'#E8C158'],[80,'#C97A3B'],[115,'#A3402A'],[150,'#5B3A63']];
+const hex = c => [1,3,5].map(k=>parseInt(c.slice(k,k+2),16));
+function prodRGB(v){
+  for(let i=0;i<STOPS.length-1;i++){
+    const [v0,c0]=STOPS[i], [v1,c1]=STOPS[i+1];
+    if(v<=v1){
+      const t=Math.max(0,Math.min(1,(v-v0)/(v1-v0)));
+      const a=hex(c0), b=hex(c1);
+      return a.map((x,k)=>Math.round(x+(b[k]-x)*t));
+    }
+  }
+  return hex(STOPS[STOPS.length-1][1]);
+}
+const rgbStr = a => `rgb(${a.join(',')})`;
+
+/* ---------- SVG ---------- */
+function el(tag, attrs, parent){
+  const e = document.createElementNS(NS, tag);
+  if(attrs) for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+const gStates = el('g', {id:'gStates'}, svg);
+const gLabels = el('g', {id:'gLabels'}, svg);
+const gRoute  = el('g', {id:'gRoute'},  svg);
+
+const pathEls = {};
+Object.keys(STATE_PATHS).forEach(abbr=>{
+  const p = el('path', {d:STATE_PATHS[abbr], class:'usa-state', 'aria-label':STATE_NAMES[abbr]||abbr}, gStates);
+  p.dataset.state = abbr;
+  pathEls[abbr] = p;
+});
+
+/* ---------- Estado de la interfaz ---------- */
+let mode = 'produccion';      // 'produccion' | 'ruta'
+let zoomed = true;
+let selected = null;          // estado seleccionado (mapa de producción)
+let stageIdx = 0;             // etapa seleccionada (mapa de ruta)
+let timer = null;             // recorrido automático
+let ready = false, views = null, vb = [0,0,959,593], anim = 0;
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Encuadre (viewBox) ---------- */
+const ASPECT = 959/593;
+function computeViews(){
+  const bbox = list => {
+    let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    list.forEach(a=>{
+      const b = pathEls[a].getBBox();
+      x0=Math.min(x0,b.x); y0=Math.min(y0,b.y);
+      x1=Math.max(x1,b.x+b.width); y1=Math.max(y1,b.y+b.height);
+    });
+    return {x0,y0,x1,y1};
+  };
+  const fit = (b,pad) => {
+    let w=(b.x1-b.x0)*(1+pad*2), h=(b.y1-b.y0)*(1+pad*2);
+    if(w/h < ASPECT) w = h*ASPECT; else h = w/ASPECT;
+    const cx=(b.x0+b.x1)/2, cy=(b.y0+b.y1)/2;
+    return [cx-w/2, cy-h/2, w, h];
+  };
+  views = {
+    full: [0,0,959,593],
+    sur:  fit(bbox(['NC','SC','GA','AL','MS','LA']), 0.08),
+    ruta: fit(bbox(['AL','MS','LA']), 0.28)
+  };
+}
+function targetView(){
+  if(!views) return null;
+  if(!zoomed) return views.full;
+  return mode==='ruta' ? views.ruta : views.sur;
+}
+function setVB(v){
+  vb = v;
+  svg.setAttribute('viewBox', v.map(n=>+n.toFixed(2)).join(' '));
+  updateScale();
+}
+function moveView(instant){
+  const t = targetView(); if(!t) return;
+  cancelAnimationFrame(anim);
+  if(instant || reduceMotion){ setVB(t); return; }
+  const from = vb.slice(), t0 = performance.now(), dur = 650;
+  const ease = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+  const step = now => {
+    const k = Math.min(1,(now-t0)/dur), e = ease(k);
+    setVB(from.map((f,i)=>f+(t[i]-f)*e));
+    if(k<1) anim = requestAnimationFrame(step);
+  };
+  anim = requestAnimationFrame(step);
+}
+// Los elementos «.ov» (etiquetas, pines) mantienen tamaño constante en pantalla
+function updateScale(){
+  const w = svg.clientWidth; if(!w) return;
+  const upp = vb[2] / w;
+  svg.querySelectorAll('.ov').forEach(g=>{
+    g.setAttribute('transform', `translate(${g.dataset.x} ${g.dataset.y}) scale(${upp})`);
   });
 }
-buildRoute();
 
-function renderGeoView(mode){
-  const legend = document.getElementById('legendProd');
-  document.querySelectorAll('.usa-state').forEach(p=>{
-    p.classList.remove('highlight','dimmed');
-    if(mode === 'produccion'){
-      if(PRODUCTION[p.dataset.state] !== undefined){
-        p.style.fill = prodColor(PRODUCTION[p.dataset.state]);
+/* ---------- Pintado de estados ---------- */
+function activeStates(){
+  const at = STAGES[stageIdx].at;
+  return at.stop ? [at.stop] : at.leg;
+}
+function paintStates(){
+  const act = mode==='ruta' ? activeStates() : [];
+  Object.keys(pathEls).forEach(abbr=>{
+    const p = pathEls[abbr];
+    p.classList.remove('highlight','dimmed','route-on','route-active','selected','clickable');
+    p.style.fill = '';
+    p.removeAttribute('tabindex'); p.removeAttribute('role');
+    if(mode==='produccion'){
+      p.classList.add('clickable');
+      if(abbr in PRODUCTION){
+        p.style.fill = rgbStr(prodRGB(PRODUCTION[abbr]));
         p.classList.add('highlight');
-      } else {
-        p.style.fill = '';
+        p.setAttribute('tabindex','0'); p.setAttribute('role','button');
       }
+      if(selected===abbr){ p.classList.add('selected'); gStates.appendChild(p); }
     } else {
-      p.style.fill = '';
-      if(['AL','MS','LA'].includes(p.dataset.state)) p.classList.add('highlight');
-      else p.classList.add('dimmed');
+      if(abbr in STAGE_OF_STATE || STAGES.some(s=>s.at.leg && s.at.leg.includes(abbr))){
+        p.classList.add('highlight','route-on','clickable');
+        if(act.includes(abbr)) p.classList.add('route-active');
+        if(abbr in STAGE_OF_STATE){ p.setAttribute('tabindex','0'); p.setAttribute('role','button'); }
+      } else {
+        p.classList.add('dimmed');
+      }
     }
   });
-  routeLayer.style.display = (mode === 'ruta') ? 'block' : 'none';
-  legend.style.display = (mode === 'produccion') ? 'flex' : 'none';
 }
-renderGeoView('produccion');
 
-document.querySelectorAll('.geo-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.geo-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    renderGeoView(btn.dataset.geo);
+function renderLabels(){
+  gLabels.textContent = '';
+  if(mode!=='produccion') return;
+  Object.keys(PRODUCTION).forEach(abbr=>{
+    const [x,y] = CENTROIDS[abbr], v = PRODUCTION[abbr];
+    const rgb = prodRGB(v);
+    const light = (0.299*rgb[0]+0.587*rgb[1]+0.114*rgb[2]) > 150;
+    const g = el('g', {class:'ov st-lab','data-x':x,'data-y':y}, gLabels);
+    g.style.fill = light ? '#241C13' : '#F7F1E5';
+    el('text', {class:'st-abbr', y:-3}, g).textContent = abbr;
+    el('text', {class:'st-val',  y:13}, g).textContent = v;
   });
+}
+
+/* ---------- Ruta ---------- */
+function labelBox(g, side, r, l1, l2){
+  const w = Math.max(l1.length*6.4, l2.length*7) + 14, h = 36;
+  let anchor, tx, ty = 0, rx;
+  if(side==='right'){ anchor='start'; tx=r+9;  rx=tx-7; }
+  else if(side==='left'){ anchor='end'; tx=-(r+9); rx=tx-w+7; }
+  else { anchor='middle'; tx=0; ty=-(r+h/2+8); rx=-w/2; }
+  const lg = el('g', {class:'lab', transform:`translate(0 ${ty})`}, g);
+  el('rect', {class:'lab-bg', x:rx, y:-h/2, width:w, height:h}, lg);
+  el('text', {class:'lab-1', x:tx, y:-3,  'text-anchor':anchor}, lg).textContent = l1;
+  el('text', {class:'lab-2', x:tx, y:11, 'text-anchor':anchor}, lg).textContent = l2;
+}
+function routeNode(i, x, y, kind){
+  const s = STAGES[i], active = i===stageIdx, r = kind==='stop' ? 13 : 10;
+  const g = el('g', {
+    class:`ov node ${kind}${active?' active':''}${i<stageIdx?' done':''}`,
+    'data-x':x, 'data-y':y, 'data-stage':i,
+    tabindex:0, role:'button',
+    'aria-label':`Etapa ${i+1}: ${s.name}, hora ${s.hour}`
+  }, gRoute);
+  if(active) el('circle', {class:'halo', r:r+1}, g);
+  el('circle', {class:'dot', r}, g);
+  el('text', {class:'num', dy:'.35em'}, g).textContent = i+1;
+  const showLabel = active || (zoomed && kind==='stop' && svg.clientWidth >= 520);
+  if(showLabel) labelBox(g, LABEL_SIDE[i], r, `HORA ${s.hour}`, s.name);
+}
+function renderRoute(){
+  gRoute.textContent = '';
+  if(mode!=='ruta') return;
+  const legs = [];
+  STAGES.forEach((s,i)=>{
+    if(!s.at.leg) return;
+    const a = CENTROIDS[s.at.leg[0]], b = CENTROIDS[s.at.leg[1]];
+    const d = `M ${a[0]},${a[1]} L ${b[0]},${b[1]}`;
+    const cls = 'route-path' + (i===stageIdx ? ' active' : i<stageIdx ? ' done' : '');
+    el('path', {d, class:cls}, gRoute);
+    el('path', {d, class:'route-hit', 'data-stage':i}, gRoute);
+    legs.push({i, x:(a[0]+b[0])/2, y:(a[1]+b[1])/2});
+  });
+  legs.forEach(l=>routeNode(l.i, l.x, l.y, 'leg'));
+  STAGES.forEach((s,i)=>{ if(s.at.stop) routeNode(i, CENTROIDS[s.at.stop][0], CENTROIDS[s.at.stop][1], 'stop'); });
+}
+
+/* ---------- Panel de detalle ---------- */
+function rankList(active){
+  return `<div class="rank-list">` + ranking.map(([a,v],i)=>`
+    <button class="rank-row${a===active?' sel':''}" data-abbr="${a}">
+      <span class="rn">${i+1}</span>
+      <span><span class="rname">${STATE_NAMES[a]}</span><span class="rbar"><i style="width:${v/PROD_MAX*100}%;background:${rgbStr(prodRGB(v))}"></i></span></span>
+      <span class="rv">${v}</span>
+    </button>`).join('') + `</div>`;
+}
+
+function prodPanel(){
+  const kicker = `<div class="gp-kicker">Producción de algodón</div>`;
+  if(!selected){
+    return kicker + `
+      <h3 class="gp-title">Consulta por estado</h3>
+      <p class="gp-lead">Haz clic en un estado del mapa o elige uno de la lista para ver su cifra, su posición y cómo se compara con los demás.</p>
+      <dl class="gp-stats">
+        <div><dt>Total registrado</dt><dd>${fmt(total)}</dd><small>suma de ${ranking.length} estados</small></div>
+        <div><dt>Promedio</dt><dd>${fmt(mean)}</dd><small>por estado</small></div>
+        <div><dt>Mayor productor</dt><dd>${STATE_NAMES[leader[0]]}</dd><small>${leader[1]}</small></div>
+        <div><dt>Menor productor</dt><dd>${STATE_NAMES[laggard[0]]}</dd><small>${laggard[1]}</small></div>
+      </dl>
+      <div class="gp-h">Ranking</div>` + rankList(null);
+  }
+  const name = STATE_NAMES[selected] || selected;
+  const head = kicker + `<h3 class="gp-title">${name}<span class="gp-abbr">${selected}</span></h3>`;
+  const note = STATE_NOTES[selected] ? `<p class="gp-note">${STATE_NOTES[selected]}</p>` : '';
+  const stageLink = selected in STAGE_OF_STATE
+    ? `<button class="gp-btn" data-act="to-route" data-stage="${STAGE_OF_STATE[selected]}">Ver en la ruta de escape →</button>` : '';
+  const foot = `<div class="gp-row">${stageLink}<button class="gp-link" data-act="clear">Quitar selección</button></div>`;
+
+  if(!(selected in PRODUCTION)){
+    return head + `
+      <p class="gp-lead">Este estado no tiene cifra de producción en el registro. Solo se incluyen ${listEs(Object.keys(PRODUCTION).map(a=>STATE_NAMES[a]))}.</p>
+      ${note}${foot}
+      <div class="gp-h">Ranking del registro</div>` + rankList(null);
+  }
+
+  const v = PRODUCTION[selected];
+  const rank = ranking.findIndex(([a])=>a===selected) + 1;
+  const share = v/total*100, diff = v - mean;
+  const vsLeader = v===leader[1] ? 'Es el líder' : `${Math.round(v/leader[1]*100)} %`;
+  return head + `
+    <div class="gp-big"><b>${v}</b><span>valor del registro · escala 45–150</span></div>
+    <div class="prod-meter"><i style="width:${v/PROD_MAX*100}%;background:${rgbStr(prodRGB(v))}"></i><em style="left:${mean/PROD_MAX*100}%" title="Promedio"></em></div>
+    <div class="meter-note"><span>0</span><span>│ promedio ${fmt(mean)}</span><span>${PROD_MAX}</span></div>
+    <dl class="gp-stats">
+      <div><dt>Posición</dt><dd>${rank}.º de ${ranking.length}</dd></div>
+      <div><dt>Participación</dt><dd>${fmt(share)} %</dd><small>del total registrado</small></div>
+      <div><dt>Frente al promedio</dt><dd>${signed(diff)}</dd><small>promedio: ${fmt(mean)}</small></div>
+      <div><dt>Frente al líder</dt><dd>${vsLeader}</dd>${v===leader[1]?'':`<small>${STATE_NAMES[leader[0]]}: ${leader[1]}</small>`}</div>
+    </dl>
+    ${note}${foot}
+    <div class="gp-h">Comparativo</div>` + rankList(selected);
+}
+
+function routePanel(){
+  const s = STAGES[stageIdx], prev = STAGES[stageIdx-1];
+  const rk = riskInfo(s.risk);
+  let delta = 'Punto de partida del trayecto';
+  if(prev){
+    const d = s.risk - prev.risk, n = Math.abs(d), pts = n===1 ? 'punto' : 'puntos';
+    delta = d>0 ? `▲ Sube ${n} ${pts} frente a la etapa anterior`
+          : d<0 ? `▼ Baja ${n} ${pts} frente a la etapa anterior`
+          : 'Sin cambio frente a la etapa anterior';
+  }
+  const blocks = Array.from({length:10},(_,i)=>`<span class="${i<s.risk?'on':''}"></span>`).join('');
+  const lastHour = STAGES[STAGES.length-1].hour;
+  const prodLink = s.at.stop
+    ? `<button class="gp-link" data-act="to-prod" data-state="${s.at.stop}">Ver ${STATE_NAMES[s.at.stop]} en el mapa de producción →</button>` : '';
+
+  return `
+    <div class="gp-kicker">Ruta de escape de August · etapa ${stageIdx+1} de ${STAGES.length}</div>
+    <h3 class="gp-title">${s.name}</h3>
+    <p class="gp-sub">Hora ${s.hour} de ${lastHour} · ${s.place}</p>
+    <div class="risk-row" style="--rc:${rk.color}">
+      <b class="risk-num">${s.risk}<small>/10</small></b>
+      <div class="risk-blocks" aria-hidden="true">${blocks}</div>
+      <span class="risk-tag">${rk.label}</span>
+    </div>
+    <p class="gp-delta">${delta}</p>
+    <p class="gp-text">${s.text}</p>
+    <div class="gp-actions">
+      <button class="gp-btn" data-act="prev" ${stageIdx===0?'disabled':''}>‹ Anterior</button>
+      <button class="gp-btn primary" data-act="play">${timer ? 'Pausar' : 'Recorrer ruta ▸'}</button>
+      <button class="gp-btn" data-act="next" ${stageIdx===STAGES.length-1?'disabled':''}>Siguiente ›</button>
+    </div>
+    ${prodLink ? `<div class="gp-row">${prodLink}</div>` : ''}
+    <div class="gp-h">Etapas del trayecto</div>
+    <div class="stage-list">` + STAGES.map((st,i)=>{
+      const c = riskInfo(st.risk).color;
+      return `
+      <button class="stage-row${i===stageIdx?' sel':''}${i<stageIdx?' done':''}" data-stage="${i}">
+        <span class="sn">${i+1}</span>
+        <span class="sname"><b>${st.name}</b><small>Hora ${st.hour} · ${st.place}</small><span class="sbar"><i style="width:${st.risk*10}%;background:${c}"></i></span></span>
+        <span class="sval" style="color:${c}">${st.risk}</span>
+      </button>`;
+    }).join('') + `</div>`;
+}
+
+function renderPanel(){
+  // conserva el foco del teclado cuando el panel se vuelve a dibujar
+  const a = document.activeElement; let key = null;
+  if(a && panel.contains(a)){
+    if(a.dataset.act) key = `[data-act="${a.dataset.act}"]`;
+    else if(a.dataset.abbr) key = `[data-abbr="${a.dataset.abbr}"]`;
+    else if(a.dataset.stage!==undefined) key = `[data-stage="${a.dataset.stage}"]`;
+  }
+  panel.innerHTML = mode==='produccion' ? prodPanel() : routePanel();
+  if(key){ const n = panel.querySelector(key); if(n) n.focus({preventScroll:true}); }
+}
+
+/* ---------- Render general y acciones ---------- */
+function render(){
+  document.querySelectorAll('.geo-btn').forEach(b=>b.classList.toggle('active', b.dataset.geo===mode));
+  document.querySelectorAll('.zoom-btn').forEach(b=>b.classList.toggle('active', (b.dataset.zoom==='in')===zoomed));
+  legend.style.display = mode==='produccion' ? 'flex' : 'none';
+  hint.textContent = mode==='produccion' ? 'Haz clic en un estado para ver su detalle' : 'Haz clic en una etapa para ver su detalle';
+  paintStates(); renderLabels(); renderRoute(); renderPanel(); updateScale();
+}
+function setMode(m, opts={}){
+  stopPlay();
+  mode = m;
+  if('state' in opts) selected = opts.state;
+  if('stage' in opts) stageIdx = opts.stage;
+  render(); moveView();
+}
+function selectState(abbr){
+  selected = abbr;
+  paintStates(); renderPanel();
+}
+function selectStage(i, manual){
+  if(manual) stopPlay();
+  stageIdx = i;
+  paintStates(); renderRoute(); renderPanel(); updateScale();
+}
+function stopPlay(){
+  if(!timer) return;
+  clearInterval(timer); timer = null;
+  if(mode==='ruta') renderPanel();
+}
+function togglePlay(){
+  if(timer){ stopPlay(); return; }
+  if(stageIdx >= STAGES.length-1) selectStage(0);
+  timer = setInterval(()=>{
+    if(stageIdx >= STAGES.length-1){ stopPlay(); return; }
+    selectStage(stageIdx+1);
+  }, 2200);
+  renderPanel();
+}
+
+/* ---------- Eventos ---------- */
+document.querySelectorAll('.geo-btn').forEach(b=>b.addEventListener('click', ()=>{
+  if(b.dataset.geo !== mode) setMode(b.dataset.geo);
+}));
+document.querySelectorAll('.zoom-btn').forEach(b=>b.addEventListener('click', ()=>{
+  zoomed = b.dataset.zoom === 'in';
+  render(); moveView();
+}));
+
+svg.addEventListener('click', e=>{
+  const n = e.target.closest('[data-stage]');
+  if(n && mode==='ruta'){ selectStage(+n.dataset.stage, true); return; }
+  const p = e.target.closest('.usa-state');
+  if(mode==='produccion'){
+    selectState(p && p.dataset.state!==selected ? p.dataset.state : null);
+  } else if(p && p.dataset.state in STAGE_OF_STATE){
+    selectStage(STAGE_OF_STATE[p.dataset.state], true);
+  }
 });
+svg.addEventListener('keydown', e=>{
+  if(e.key!=='Enter' && e.key!==' ') return;
+  const t = e.target;
+  if(!t.matches || !t.matches('.usa-state,[data-stage]')) return;
+  e.preventDefault();
+  t.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+});
+
+function tipFor(abbr){
+  const name = STATE_NAMES[abbr] || abbr;
+  if(mode==='produccion'){
+    if(abbr in PRODUCTION){
+      const r = ranking.findIndex(([a])=>a===abbr)+1;
+      return `<b>${name}</b>Producción: ${PRODUCTION[abbr]} · ${r}.º de ${ranking.length}`;
+    }
+    return `<b>${name}</b>Sin cifra en el registro`;
+  }
+  if(abbr in STAGE_OF_STATE){
+    const i = STAGE_OF_STATE[abbr];
+    return `<b>${name}</b>Etapa ${i+1}: ${STAGES[i].name}`;
+  }
+  return '';
+}
+svg.addEventListener('pointermove', e=>{
+  if(e.pointerType==='touch') return;
+  const p = e.target.closest && e.target.closest('.usa-state');
+  const html = p ? tipFor(p.dataset.state) : '';
+  if(!html){ tip.classList.remove('on'); return; }
+  tip.innerHTML = html; tip.classList.add('on');
+  const c = card.getBoundingClientRect();
+  let x = e.clientX - c.left + 16, y = e.clientY - c.top + 16;
+  if(x + tip.offsetWidth > c.width - 8) x = e.clientX - c.left - tip.offsetWidth - 16;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+});
+svg.addEventListener('pointerleave', ()=>tip.classList.remove('on'));
+
+panel.addEventListener('click', e=>{
+  const b = e.target.closest('[data-act],[data-abbr],[data-stage]');
+  if(!b) return;
+  if(b.dataset.abbr){ selectState(b.dataset.abbr); return; }
+  if(b.dataset.stage!==undefined && !b.dataset.act){ selectStage(+b.dataset.stage, true); return; }
+  switch(b.dataset.act){
+    case 'clear':    selectState(null); break;
+    case 'prev':     selectStage(Math.max(0, stageIdx-1), true); break;
+    case 'next':     selectStage(Math.min(STAGES.length-1, stageIdx+1), true); break;
+    case 'play':     togglePlay(); break;
+    case 'to-route': setMode('ruta', {stage:+b.dataset.stage}); break;
+    case 'to-prod':  setMode('produccion', {state:b.dataset.state}); break;
+  }
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && mode==='produccion' && selected && $('geografia').classList.contains('active')) selectState(null);
+});
+
+/* ---------- Arranque ---------- */
+render();
+// El mapa está en una pestaña oculta: el encuadre se calcula cuando ya es visible.
+let wasWide = null;
+new ResizeObserver(()=>{
+  const w = svg.clientWidth;
+  if(!w) return;
+  if(!ready){ ready = true; computeViews(); setVB(targetView()); }
+  else updateScale();
+  const wide = w >= 520;
+  if(wasWide !== null && wide !== wasWide){ renderRoute(); updateScale(); }
+  wasWide = wide;
+}).observe(svg);
+
+})();
 </script>
 
 </body>
